@@ -16,13 +16,15 @@
     <nav class="navbar navbar-light bg-light">
         <a class="navbar-brand">Welcome best Photograph Awards 2020</a>
         <form class="form-inline">
-            <button class="btn" id="remVotes" disabled> votes left: <span class="badge badge-success">-</span></button>
+            <button class="btn" disabled> votes left: <span class="badge badge-success">
+                    <p id="remainingVotes">-</p>
+                </span></button>
             <button class="btn btn-outline-success my-2 my-sm-0" id="logout">LogOut</button>
         </form>
     </nav>
     <!-- bootstrap input for 2 images  -->
     <br>
-    <div class="card-columns">
+    <div class="card-columns" id="step1">
         <div class="card">
             <div class="input-group">
                 <div class="form-group" style="background-color: whitesmoke;border-style:dashed;">
@@ -40,27 +42,40 @@
 
             </div>
         </div>
-        <div class="card">
+        <div class="card card-columns">
+
+            <div class="card">
+                <div class="input-group">
+                    <img src="" alt="img1 Not uploaded" style="height: 80px;width: 80px;padding: 2%;" id="userimg1">
+                </div>
+                <!-- <button class="btn btn-danger" id="delimg1">delete</button> -->
+            </div>
+            <div class="card">
+                <div class="input-group">
+                    <img src="" alt="img2 Not uploaded" style="height: 80px;width: 80px;padding: 2%;" id="userimg2">
+                </div>
+                <!-- <button class="btn btn-danger" id="delimg2">delete</button> -->
+
+            </div>
             <div class="form-group">
-                <div class="input-group"><img src="" alt="img1 Not uploaded"
-                        style="height: 80px;width: 80px;padding: 2%;" id="userimg1"></div>
-                <div class="input-group"><img src="" alt="img2 Not uploaded"
-                        style="height: 80px;width: 80px;padding: 2%;" id="userimg2"></div>
-                    <br>
-                <div class="input-group"><button class="btn btn-success"> Confirm Entry and Submit </button></div>
+
+
+                <br>
+                <div class="input-group"><button class="btn btn-success">Proceed Next</button></div>
             </div>
 
         </div>
     </div>
     <style>
-        .card{
+        .card {
             padding: 2%
-            
         }
     </style>
 
     <!-- arrange as matrix , on click enlarge, check for available votes and ask for confirm and decrease available votes by 1. -->
-    <div id="imgdeck" class="card-columns"></div>
+    <div id="imgdeck" class="card-columns" id="step2" style="display: none;">
+        <!-- inser images dynamically if >10 -->
+    </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
         integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
@@ -82,15 +97,127 @@
     <script src="https://www.gstatic.com/firebasejs/7.15.5/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/7.15.5/firebase-storage.js"></script>
     <script defer src="https://www.gstatic.com/firebase/init.js"></script>
-    <script src="init.js"></script>
+    <script src="fbinit.js"></script>
     <script src="main.js"></script>
 
     <script>
+        var UID
         firebase.auth().onAuthStateChanged((user) => {
             if (user === null) {
                 window.location.replace('index.html')
             }
+            else {
+                var u = user.uid;
+                UID = user.uid
+                firebase.database().ref(u).once('value', sn => {
+                    if (!sn.exists()) {
+                        firebase.database().ref(u).set({
+                            'remainingVotes': '2',
+                            'uploads': '0'
+                        })
+
+                        document.getElementById('remainingVotes').innerText = '2'
+
+                    }
+                    else {
+                        document.getElementById('remainingVotes').innerText = sn.child('remainingVotes').val()
+                        document.getElementById('userimg1').setAttribute('src', sn.child('img1').val())
+                        document.getElementById('userimg2').setAttribute('src', sn.child('img2').val())
+
+                    }
+                })
+            }
         })
+
+
+        function uploadImg() {
+            //diable upload btn
+            var database = firebase.database().ref();
+            document.getElementById("uploadImgBtn").disabled = true
+            var file = document.getElementById("exampleFormControlFile1").files[0]
+            if ((document.getElementById("exampleFormControlFile1").files.length) < 1) {
+                //warning 
+
+                document.getElementById("uploadImgBtn").disabled = false
+                $(document).ready(function () {
+                    $('.toast').toast({ delay: 3000 })
+                    $('#alertmsg').html("Please select media")
+                    $('.toast').toast('show');
+                });
+            }
+            else {
+                // get fid and upload image
+                var storageRef = firebase.storage().ref()
+                // database.
+                var metadata = {};
+                var today = new Date();//time stamp for image
+                var date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
+                var time = today.getHours() + "," + today.getMinutes() + "," + today.getSeconds();
+                var timestamp = date + ' ' + time;
+                var uploadTask = storageRef.child('UserUploads/' + UID + '/' + timestamp + file.name).put(file, metadata);//upload image
+                uploadTask.on('state_changed', function (snapshot) {
+                    var progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    switch (snapshot.state) {
+                        case firebase.storage.TaskState.PAUSED:
+                            console.log('Upload is paused');
+                            document.getElementById("uploadImgBtn").disabled = false
+                            $(document).ready(function () {
+                                $('.toast').toast({ delay: 3000 })
+                                $('#alertmsg').html("Upload Paused")
+                                $('.toast').toast('show');
+                            });
+
+                            break;
+                        case firebase.storage.TaskState.RUNNING:
+                            console.log('Upload is running');
+                            document.getElementById("uploadImgBtn").disabled = false
+                            $(document).ready(function () {
+                                $('.toast').toast({ delay: 3000 })
+                                $('#alertmsg').html("Uploading ... it may take time based on file size.")
+                                $('.toast').toast('show');
+                            });
+
+                            break;
+                    }
+                }, function (error) {
+                    console.log(error);
+                    $(document).ready(function () {
+                        $('.toast').toast({ delay: 3000 })
+                        $('#alertmsg').html("Error uploading, Try again" + error)
+                        $('.toast').toast('show');
+                    });
+                    document.getElementById("uploadImgBtn").disabled = false
+                }, function () {
+                    // get the uploaded image url back 
+                    uploadTask.snapshot.ref.getDownloadURL().then(
+                        function (downloadURL) {
+                            // You get your url from here 
+                            document.getElementById("exampleFormControlFile1").value=''
+                            console.log('File available at', downloadURL);
+                            $(document).ready(function () {
+                                $('.toast').toast({ delay: 3000 })
+                                $('#alertmsg').html("Upload successful")
+                                $('.toast').toast('show');
+                            });
+
+                            firebase.database().ref(UID).once('value', s => {
+                                if (s.child('img1').exists()) {
+                                    firebase.database().ref(UID + '/img2').set(downloadURL)
+                                    document.getElementById('userimg2').setAttribute('src', String(downloadURL))
+                                } else {
+                                    firebase.database().ref(UID + '/img1/').set(downloadURL)
+                                    document.getElementById('userimg1').src= String(downloadURL)
+                                }
+                            })
+
+                        });
+
+                });
+
+            }
+
+        }
+
 
         // signout
         document.getElementById('logout').addEventListener('click', () => {

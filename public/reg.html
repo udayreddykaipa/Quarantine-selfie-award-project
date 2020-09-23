@@ -73,7 +73,7 @@
     <script src="https://www.gstatic.com/firebasejs/7.15.5/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/7.15.5/firebase-storage.js"></script>
     <script defer src="https://www.gstatic.com/firebase/init.js"></script>
-    <script src="init.js"></script>
+    <script src="fbinit.js"></script>
 
 
     <script>
@@ -81,6 +81,13 @@
             if (user) {
                 user.sendEmailVerification().then(function () {
                     // Email sent.
+                    $(document).ready(function () {
+                        $('.toast').toast({ delay: 3000 })
+                        $('#alertmsg').html('Verification Email has been sent')
+                        $('.toast').toast('show');
+                    });
+
+
                 }).catch(function (error) {
                     $(document).ready(function () {
                         $('.toast').toast({ delay: 3000 })
