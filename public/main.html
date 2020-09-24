@@ -24,7 +24,7 @@
     </nav>
     <!-- bootstrap input for 2 images  -->
     <br>
-    <div class="card-columns" id="step1">
+    <div class="card-columns" id="step1" style="display: none;">
         <div class="card">
             <div class="input-group">
                 <div class="form-group" style="background-color: whitesmoke;border-style:dashed;">
@@ -46,13 +46,13 @@
 
             <div class="card">
                 <div class="input-group">
-                    <img src="" alt="img1 Not uploaded" style="height: 80px;width: 80px;padding: 2%;" id="userimg1">
+                    <img src="" alt=" No Preview" style="height: 80px;width: 100px;padding: 2%;" id="userimg1">
                 </div>
                 <!-- <button class="btn btn-danger" id="delimg1">delete</button> -->
             </div>
             <div class="card">
                 <div class="input-group">
-                    <img src="" alt="img2 Not uploaded" style="height: 80px;width: 80px;padding: 2%;" id="userimg2">
+                    <img src="" alt="No Preview" style="height: 80px;width: 100px;padding: 2%;" id="userimg2">
                 </div>
                 <!-- <button class="btn btn-danger" id="delimg2">delete</button> -->
 
@@ -61,7 +61,7 @@
 
 
                 <br>
-                <div class="input-group"><button class="btn btn-success">Proceed Next</button></div>
+                <div class="input-group"><button class="btn btn-success" id="gotostep2btn">Proceed Next</button></div>
             </div>
 
         </div>
@@ -73,8 +73,26 @@
     </style>
 
     <!-- arrange as matrix , on click enlarge, check for available votes and ask for confirm and decrease available votes by 1. -->
-    <div id="imgdeck" class="card-columns" id="step2" style="display: none;">
+    <div class="card-columns" id="step2" style="padding: 2%;">
         <!-- inser images dynamically if >10 -->
+    </div>
+    <div style="position: absolute;top: 8%;right: 3%;">
+        <div class="toast" id="toast">
+            <div class="toast-header">
+                <strong class="mr-auto"> <img src="" alt="" style="width: 15px;height: 15px;">&nbsp;Alert</strong>
+                <small>NOW</small>
+                <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="toast-body">
+                <label id="alertmsg" style="color: darkgoldenrod;"> Welcome to admin panel</label>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin" style="display: none;">
+        <h3>Welcome Admin</h3>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
@@ -105,31 +123,93 @@
         firebase.auth().onAuthStateChanged((user) => {
             if (user === null) {
                 window.location.replace('index.html')
-            }
-            else {
+            } else {
                 $(document).ready(function () {
                     $('.toast').toast({ delay: 3000 })
-                    $('#alertmsg').html("Please select media")
+                    $('#alertmsg').html("Loading, Fetching User Data.")
                     $('.toast').toast('show');
                 });
                 var u = user.uid;
                 UID = user.uid
-                firebase.database().ref(u).once('value', sn => {
-                    if (!sn.exists()) {
-                        firebase.database().ref(u).set({
-                            'remainingVotes': '2',
-                            'uploads': '0'
-                        })
+                firebase.database().ref('MasterUid').once('value', sn => {
 
-                        document.getElementById('remainingVotes').innerText = '2'
+                    var tmpbool = false
+                    sn.forEach(s => {
+                        console.log(s.val(), UID)
+                        if (UID === s.val()) {
+                            tmpbool = true
+                            console.log('dj', tmpbool)
+
+                            // show admin
+                        }
+                    })
+                    console.log(tmpbool, 'admin')
+                    if (tmpbool) {
+                        console.log('dj')
+                        document.getElementById('step1').style.display = 'none'
+                        document.getElementById('admin').style.display = 'block'
+                        loadadmin()
 
                     }
                     else {
-                        document.getElementById('remainingVotes').innerText = sn.child('remainingVotes').val()
-                        document.getElementById('userimg1').setAttribute('src', sn.child('img1').val())
-                        document.getElementById('userimg2').setAttribute('src', sn.child('img2').val())
+
+                        // load user data
+                        firebase.database().ref(u).once('value', sn => {
+                            firebase.database().ref(UID + '/uploaded').once('value', s => {
+                                console.log(s.val(), 'sdjl')
+                                if (s.val() === true) {
+                                    console.log('already uploaded')
+                                    document.getElementById('step1').style.display = 'none'
+                                    document.getElementById('step2').style.display = 'block'
+                                    loadimgs()
+
+                                }
+                                if (!sn.exists()) {
+                                    //new user firstlogin
+                                    document.getElementById('step1').style.display = 'block'
+                                    firebase.database().ref(u).set({
+                                        'remainingVotes': '2',
+                                        'uploads': '0'
+                                    })
+
+                                    document.getElementById('remainingVotes').innerText = '2'
+
+                                }
+                                else if (sn.child('remainingVotes').val() === '0') {
+                                    alert('voted')
+                                    firebase.auth().signOut().then(() => {
+                                        // ok
+                                    }).catch(error => {
+                                        alert('err' + error)
+                                    })
+
+
+                                }
+                                else {
+                                    //not firsttime
+                                    document.getElementById('step1').style.display = 'block'
+                                    document.getElementById('remainingVotes').innerText = sn.child('remainingVotes').val()
+                                    if (sn.child('uploads').val() != '0') {
+                                        //uoloaded
+
+
+                                        document.getElementById('userimg1').setAttribute('src', sn.child('img1').val())
+                                        document.getElementById('userimg2').setAttribute('src', sn.child('img2').val())
+                                    }
+
+
+                                }
+
+                                firebase.database().ref(UID).on('value', snap => {
+                                    document.getElementById('remainingVotes').innerText = snap.child('remainingVotes').val()
+
+                                })
+                            })
+                        })
 
                     }
+
+
                 })
             }
         })
@@ -159,7 +239,7 @@
                 var date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
                 var time = today.getHours() + "," + today.getMinutes() + "," + today.getSeconds();
                 var timestamp = date + ' ' + time;
-                var uploadTask = storageRef.child('UserUploads/' + UID + '/' + timestamp + file.name).put(file, metadata);//upload image
+                var uploadTask = storageRef.child('UserUploads/' + UID + timestamp + file.name).put(file, metadata);//upload image
                 uploadTask.on('state_changed', function (snapshot) {
                     var progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
                     switch (snapshot.state) {
@@ -197,7 +277,7 @@
                     uploadTask.snapshot.ref.getDownloadURL().then(
                         function (downloadURL) {
                             // You get your url from here 
-                            document.getElementById("exampleFormControlFile1").value=''
+                            document.getElementById("exampleFormControlFile1").value = ''
                             console.log('File available at', downloadURL);
                             $(document).ready(function () {
                                 $('.toast').toast({ delay: 3000 })
@@ -211,7 +291,7 @@
                                     document.getElementById('userimg2').setAttribute('src', String(downloadURL))
                                 } else {
                                     firebase.database().ref(UID + '/img1/').set(downloadURL)
-                                    document.getElementById('userimg1').src= String(downloadURL)
+                                    document.getElementById('userimg1').src = String(downloadURL)
                                 }
                             })
 
@@ -233,6 +313,160 @@
             })
         })
 
+        document.getElementById('gotostep2btn').addEventListener('click', () => {
+            document.getElementById('step1').style.display = 'none'
+            // document.getElementById('step2').style.display = 'block'
+            firebase.database().ref(UID + '/uploaded').set(true)
+            loadimgs()
+        })
+
+        function displyImg(url) {
+            console.log('one', url.search(UID))
+
+            if (url.search(UID) != -1) {
+                return
+            }
+            console.log(url, 'File')
+            var d = document.createElement('DIV')
+            d.classList = "card card-row"
+            var d1 = document.createElement('DIV')
+            d1.className = "card"
+            var d2 = document.createElement('DIV')
+            d2.className = "card"
+            var image = document.createElement('IMG')
+            image.src = url
+            image.style.height = "400px"
+            image.style.width = "400px"
+            image.id = url
+            var btn = document.createElement('BUTTON')
+            btn.className = 'btn btn-success'
+            btn.id = url
+            btn.innerHTML = "Like"
+            btn.addEventListener('click', e => {
+                var url = e.target.id;
+                alert('You have Voted successfully')
+                // check remaining votes, if 0 error
+                var r = firebase.database()
+                r.ref(UID).once('value', s => {
+                    if (s.child('remainingVotes').val() != '0') {
+                        // update one like
+                        // get current likes
+                        url = url.split(':').join('');
+                        url = url.split('/').join('');
+
+                        url = url.split('.').join('');
+                        console.log('jsdfkljjlk', url, url.search(UID))
+                        r.ref('votes/' + url).once('value', s1 => {
+                            var r1
+                            if (s1.val() === null) {
+                                r1 = 0
+                            }
+                            else {
+                                r1 = parseInt(s1.val())
+                            }
+                            console.log(r)
+                            r.ref('votes/' + url).set(r1 + 1)
+                        })
+                        // dec remainng votes
+                        r.ref(UID).child('remainingVotes').set(parseInt(document.getElementById('remainingVotes').innerHTML) - 1)
+                    } else {
+                        alert('No votes Remaining')
+                        firebase.auth().signOut()
+                    }
+
+                })
+
+            })
+            d1.appendChild(image)
+            d2.appendChild(btn)
+            d.appendChild(d1)
+            d.appendChild(d2)
+            document.getElementById('step2').appendChild(d)
+
+        }
+
+
+        function loadimgs() {
+            var listRef = firebase.storage().ref('UserUploads/')
+            console.log(' occurred!')
+            // Find all the prefixes and items.
+            listRef.listAll().then(function (res) {
+                var rescount = 0
+                var res1 = res
+                res1.items.forEach(function (itemRef) {
+                    rescount = rescount + 1
+                })
+                if (rescount > 4) {
+                    console.log(rescount, 'rescnt')
+                    res.items.forEach(function (itemRef) {
+                        itemRef.getDownloadURL().then(function (url) {
+                            console.log(url)
+                            displyImg(url)
+                        })
+                        // All the items under listRef.
+                    });
+                } else if (rescount <= 4) {
+                    document.getElementById('step2').innerHTML = "Very less Number of uploads to VOte, Images Count " + rescount + " comeback again, Early user"
+
+                } else {
+                    document.getElementById('step2').innerHTML = "Something went wrong, Images Count " + rescount
+
+
+                }
+
+
+            }).catch(function (error) {
+                console.log('Uh-oh, an error occurred!', error)
+                // Uh-oh, an error occurred!
+            });
+
+
+        }
+
+        function loadadmin() {
+            var listRef = firebase.storage().ref('UserUploads/')
+            console.log(' occurred!')
+            // Find all the prefixes and items.
+            listRef.listAll().then(function (res) {
+                res.items.forEach(function (itemRef) {
+                    itemRef.getDownloadURL().then(function (url) {
+                        console.log(url)
+                        var d = document.createElement('DIV')
+                        d.classList = "card card-row"
+                        var d1 = document.createElement('DIV')
+                        d1.className = "card"
+                        var d2 = document.createElement('DIV')
+                        d2.className = "card"
+                        var image = document.createElement('IMG')
+                        image.src = url
+                        image.style.height = "400px"
+                        image.style.width = "400px"
+                        image.id = url
+                        var btn = document.createElement('SPAN')
+                        btn.className = "badge badge-success"
+                        var uurl
+                        uurl = url.split(':').join('');
+                        uurl = uurl.split('/').join('');
+                        uurl = uurl.split('.').join('');
+                        firebase.database().ref('votes/' + uurl).on('value', s => {
+                            btn.innerHTML = s.val()
+                            d1.appendChild(image)
+                            d2.appendChild(btn)
+                            d.appendChild(d1)
+                            d.appendChild(d2)
+                            document.getElementById('step2').appendChild(d)
+                        })
+                    })
+                    // All the items under listRef.
+                });
+
+            }).catch(function (error) {
+                console.log('Uh-oh, an error occurred!', error)
+                // Uh-oh, an error occurred!
+            });
+
+
+        }
     </script>
 </body>
 
